@@ -5,16 +5,23 @@ var http   = require('http');
 var bot = new irc.Client(config.server, config.botName, config.extra);
 
 bot.addListener("message", function (from, to, text, message) {
-    var pattern = /\w*::\w*/;
-    var match = pattern.exec(text);
-    var response_code = is_module(match);
+    if ( message.command === 'PRIVMSG' && message.nick != 'dipsy' ) {
+        var pattern = /\w*::\w*/;
+        var match = pattern.exec(text);
+        if (typeof match === 'undefined') {
+        }
+        else {
+            is_module(match, message.args[0]);
+        }
+    }
 });
 
 
-function is_module(match) {
+function is_module(match, channel) {
     var options = {
         host: 'api.metacpan.org',
-        path: '/module/' + match + '?fields=name'
+        method: "GET",
+        path: '/module/' + match + '?fields=abstract,name'
     };
 
     callback = function (response) {
@@ -29,7 +36,12 @@ function is_module(match) {
         response.on('end', function () {
             if (this.statusCode === 200) {
                 var pod_url = 'https://metacpan.org/pod/' + match[0];
-                bot.say(config.extra.channels[0], pod_url);
+                var module = JSON.parse(str);
+                var wisdom = pod_url;
+                if ( module.hasOwnProperty('abstract') ) {
+                    wisdom += ' ' + module.abstract;
+                }
+                bot.say(channel, wisdom);
             }
         });
     }
